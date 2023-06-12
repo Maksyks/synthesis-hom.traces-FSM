@@ -1,37 +1,36 @@
+//The program automatically builds a tree and installation routes
 #include <iostream>
 #include <fstream>
 #include <vector>
 #include <iterator>
 using namespace std;
-//структура переходов
+//The structure of transitions
 struct Transition
 {
-	unsigned int s1; //прошлое состо€ние
-	unsigned int trin; //входной символ
-	unsigned int trout; //выходной символ
-	unsigned int s2; //новое состо€ние
+	unsigned int s1; //Past state
+	unsigned int trin; //Input character
+	unsigned int trout; //Output character
+	unsigned int s2; //New state
 };
 
-//дерево
+//The tree
 class Node
 {
 public:
-	vector <unsigned int> node; //состо€ни€?
-	vector <Node*>* successor; //приемник
+	vector <unsigned int> node; //States
+	vector <Node*>* successor; //Successor
 	Node() { successor = new vector<Node*>(); }
 	friend class FSM;	
-	void printNode(Node* node, int level);
-
 };
 
 class FSM
 {
 private:
-	unsigned int s; //кол-во состо€ний
-	unsigned int i; //кол-во входов
-	unsigned int o; //кол-во выходов
-	unsigned int tr; //кол-во переходов(дуг)
-	Transition* Tr1;
+	unsigned int s; //Number of states
+	unsigned int i; //Number of input character
+	unsigned int o; //Number of output character
+	unsigned int tr; //Number of transitions
+	Transition* Transit;
 	Node* root;
 public:	
 	friend class Node;
@@ -41,7 +40,7 @@ public:
 		i = 0;
 		o = 0;
 		tr = 0;
-		Tr1 = NULL;
+		Transit = NULL;
 		root = NULL;
 	}
 	FSM(string FSMpr);
@@ -63,108 +62,111 @@ public:
 	}
 	Transition  getTr1(unsigned int y)
 	{
-		return Tr1[y];
+		return Transit[y];
 	}
 
 	Node* createTree(vector<vector<unsigned int>>&);
-	Node* createTreeRecursion(vector<unsigned int>&, vector<vector<unsigned int>>&, vector<unsigned int>&, int level );
+	Node* createTreeRecursion(vector<unsigned int>&, vector<vector<unsigned int>>&,
+		vector<unsigned int>&, int);
 	void printTree();
-	void setRoot(Node* rt)
-	{
-		root = rt;
-	}
+	void printNode(Node* node, int level);
+	void setRoot(Node* rt) {root = rt;}
 	void printProperties();
+	void printHomingTraces(string, vector<vector<unsigned int>> );
 };
 
 Node* FSM::createTreeRecursion(vector<unsigned int>& states,
 	vector<vector<unsigned int>>& ht, vector<unsigned int>& w_vec, int level)
 {
-	// создаем новый узел и заполн€ем его состо€ни€ми
-	Node* node = new Node;
-	node->node = states;
+	// create a new node and fill it with states
+	Node* obj_node = new Node;
+	obj_node->node = states;
 	level++;
-
-	// дл€ каждой пары (входной символ, выходной символ) входного алфавита
-	if (level == 10)
-		return node;
-		for (unsigned int j = 0; j < i; j++) {
-			for (unsigned int k = 0; k < o; k++) {
-				// создаем новое множество состо€ний, в которое можно перейти по текущей паре (входной символ, выходной символ)
+	// for each pair (input character, output character) of the input alphabet
+	if (level == 100)
+		return obj_node;
+	
+		for (unsigned int f_in = 0; f_in < i; f_in++) {
+			for (unsigned int f_out = 0; f_out < o; f_out++) {
+				// creating a new set of states that can be switched to by the current pair (input symbol, output symbol)
 				vector<unsigned int> new_states;
 				for (unsigned int m = 0; m < tr; m++) {
-					for (unsigned int y = 0; y < states.size(); y++) {
-						if (Tr1[m].s1 == states[y] && Tr1[m].trin == j && Tr1[m].trout == k) {
+					for (unsigned int y = 0; y < states.size(); y++)
+					{
+						if (Transit[m].s1 == states[y] && Transit[m].trin == f_in && Transit[m].trout == f_out) {
 							bool found = false;
-							//ищет повторени€ в новом множестве состо€ний
+							//looking for repetitions in a new set of states
 							for (unsigned int n = 0; n < new_states.size(); n++) {
-								if (new_states[n] == Tr1[m].s2) {
+								if (new_states[n] == Transit[m].s2) {
 									found = true;
 									break;
 								}
 							}
 							if (!found) {
-								new_states.push_back(Tr1[m].s2);
+								new_states.push_back(Transit[m].s2);
 							}
 						}
 					}
 				}
-				// если новое множество состо€ний не пустое, создаем дл€ него новый узел и добавл€ем его в качестве потомка текущего узла
+				// if the new set of states is not empty, create a new node for it and add it as a descendant of the current node
 				if (new_states.size() > 1 && new_states != states) {
-					w_vec.push_back(j); //input
-					w_vec.push_back(k);	//output
-					//добавление элемента
-					Node* new_node = createTreeRecursion(new_states, ht, w_vec, level);
-					if (node->successor == NULL) {
-						node->successor = new vector<Node*>;
+					// Creating a copy of w_vec to avoid changing the original at the following levels
+					vector<unsigned int> new_w_vec = w_vec; 
+					new_w_vec.push_back(f_in); //input
+					new_w_vec.push_back(f_out);	//output
+					//adding an element
+					Node* new_node = createTreeRecursion(new_states, ht, new_w_vec, level);
+					if (obj_node->successor == NULL) {
+						obj_node->successor = new vector<Node*>;
 					}
-					node->successor->push_back(new_node);
+					obj_node->successor->push_back(new_node);
 
 				}
 				else
 				{
-					//сохранение послед-ти
+					//saving sequences
 					if (new_states.size() == 1)
 					{
-						//добавл€ем символы и удал€ем, т.к. на последней итерации не добавл€ет
-						w_vec.push_back(j); //input
-						w_vec.push_back(k);
-						//добавление и удаление состо€ни€ дл€ вывода
-						w_vec.insert(w_vec.begin(),new_states[0]);
-						ht.push_back(w_vec);
-						//удалить все, что добавили
-						w_vec.erase(w_vec.begin());
-						w_vec.pop_back();
-						w_vec.pop_back();
+						vector<unsigned int> new_w_vec = w_vec;
+						//we add characters and delete them, because at the last iteration it does not add
+						new_w_vec.push_back(f_in); //input
+						new_w_vec.push_back(f_out);
+						//adding and removing a state for output
+						new_w_vec.insert(new_w_vec.begin(),new_states[0]);
+						ht.push_back(new_w_vec);
+						//delete everything you added
+						new_w_vec.erase(new_w_vec.begin());
+						new_w_vec.pop_back();
+						new_w_vec.pop_back();
 					}
 					Node* new_node = new Node; new_node->node = new_states;
-					if (node->successor == NULL) {
-						node->successor = new vector<Node*>;
+					if (obj_node->successor == NULL) {
+						obj_node->successor = new vector<Node*>;
 					}
-					node->successor->push_back(new_node);
+					obj_node->successor->push_back(new_node);
 
 				}
 
 			}
 		}
-		//удаление элемента
+		//deleting an element
 		if (w_vec.size())
 		{
 			w_vec.pop_back();
 			w_vec.pop_back();
 		}
 		level--;
-	return node;
+	return obj_node;
 }
 
 Node* FSM::createTree(vector<vector<unsigned int>> &ht)
 {
 	vector<unsigned int> states;
-	//получивща€с€ последовательность
+	//the resulting sequence
 	vector<unsigned int> w_vec;
 	int level = 0;
-	for (unsigned int j = 0; j < s; j++) {
+	for (unsigned int j = 0; j < s; j++) 
 		states.push_back(j);
-	}
 	return createTreeRecursion(states, ht, w_vec, level);
 }
 
@@ -181,15 +183,15 @@ FSM::FSM(string FSMpr)
 	fin >> i;
 	fin >> o;
 	fin >> tr;
-	Tr1 = new Transition[gettr()];
+	Transit = new Transition[gettr()];
 	while (!fin.eof())
 	{
 		for (unsigned int i = 0;i < tr;i++)
 		{
-			fin >> Tr1[i].s1;
-			fin >> Tr1[i].trin;
-			fin >> Tr1[i].s2;
-			fin >> Tr1[i].trout;
+			fin >> Transit[i].s1;
+			fin >> Transit[i].trin;
+			fin >> Transit[i].s2;
+			fin >> Transit[i].trout;
 			
 		}
 	}
@@ -206,26 +208,26 @@ void FSM::printProperties()
 	cout << tr << " Number of transition" << "\n";
 	for (unsigned int i = 0;i < tr;i++)
 	{
-		cout << Tr1[i].s1 << " ";
-		cout << Tr1[i].trin << " ";
-		cout << Tr1[i].trout << " ";
-		cout << Tr1[i].s2 << "\n";
+		cout << Transit[i].s1 << " ";
+		cout << Transit[i].trin << " ";
+		cout << Transit[i].trout << " ";
+		cout << Transit[i].s2 << "\n";
 	}
 }
 
-void printNode(Node* node, int level)
+void FSM::printNode(Node* node, int level)
 {
-	// ¬ыводим отступы дл€ текущего уровн€ вложенности
+	// Output margins for the current nesting level
 	for (int i = 0; i < level; i++) {
 		cout << "  ";
 	}
-	// ¬ыводим состо€ни€ текущего узла
+	// Output the status of the current node
 	cout << "State(s): ";
 	for (unsigned int i = 0; i < node->node.size(); i++) {
 		cout << node->node[i] << " ";
 	}
 	cout << endl;
-	// –екурсивно обходим потомков текущего узла
+	// Recursively traversing the descendants of the current node
 	if (node->successor != NULL) {
 		for (unsigned int i = 0; i < node->successor->size(); i++) {
 			printNode((*node->successor)[i], level + 1);
@@ -239,19 +241,50 @@ void FSM::printTree()
 		cout << "Tree is empty" << endl;
 		return;
 	}
-	cout << "Homing tree(s):" << endl;
-	// –екурсивно выводим дерево(а)
-	printNode(root, 0);
+	cout << "Homing tree:" << endl;
+	// Recursively output the tree
+	this->printNode(root, 0);
 }
 
+void FSM::printHomingTraces(string FSMht, vector<vector<unsigned int>> ht)
+{
+	ofstream fout;
+	fout.open(FSMht);
+	for (unsigned int s = 0;s < this->gets();s++)
+	{
+		for (unsigned int i = 0; i < ht.size(); i++)
+		{
+			unsigned int j = 0;
+			if (ht[i][j] == s)
+			{
+				fout << ht[i][j] << " - ";
+				j++;
+				int slash = 0;
+				for (;j < ht[i].size();j++)
+				{
+					slash++;
+					fout << ht[i][j];
+					if (slash < 2)
+						fout << "/";
+					else
+					{
+						slash = 0;fout << " ";
+					}
+
+				}
+				fout << '\n';
+			}
+		}
+	}
+}
 
 int main()
 {
 	string FSMpr = "Properties.txt";
 	FSM obj(FSMpr);
-	//вывод параметров FSM
+	//output of FSM parameters to the console
 	//obj.printProperties();
-	//вектор всех последовательностей
+	//vector of all sequences
 	vector<vector<unsigned int>> ht;
 
 	Node* root = obj.createTree(ht);
@@ -259,31 +292,6 @@ int main()
 	obj.setRoot(root);
 	obj.printTree();
 
-	cout << '\n';
-	for (unsigned int s = 0;s < obj.gets();s++)
-	{
-		for (unsigned int i = 0; i < ht.size(); i++)
-		{
-			unsigned int j = 0;
-			if (ht[i][j] == s)
-			{
-				cout << ht[i][j] << " - ";
-				j++;
-				int slash = 0;
-				for (;j < ht[i].size();j++)
-				{
-					slash++;
-					cout << ht[i][j];
-					if (slash < 2)
-						cout << "/";
-					else
-					{
-						slash = 0;cout << " ";
-					}
-
-				}
-				cout << '\n';
-			}
-		}
-	}
+	string FSMht = "Homing traces.txt";
+	obj.printHomingTraces(FSMht, ht);
 }
